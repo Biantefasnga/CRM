@@ -35,19 +35,17 @@ export default function Clients() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                <th style={{ padding: '1rem', textAlign: 'left', color: 'var(--text-muted)' }}>Name</th>
-                <th style={{ padding: '1rem', textAlign: 'left', color: 'var(--text-muted)' }}>Contact Person</th>
-                <th style={{ padding: '1rem', textAlign: 'left', color: 'var(--text-muted)' }}>Email</th>
-                <th style={{ padding: '1rem', textAlign: 'left', color: 'var(--text-muted)' }}>Phone</th>
+                <th style={{ padding: '1rem', textAlign: 'left', color: 'var(--text-muted)' }}>Nama Institusi</th>
+                <th style={{ padding: '1rem', textAlign: 'left', color: 'var(--text-muted)' }}>Alamat</th>
+                <th style={{ padding: '1rem', textAlign: 'left', color: 'var(--text-muted)' }}>Kota</th>
               </tr>
             </thead>
             <tbody>
               {clients.map(client => (
                 <tr key={client.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '1rem' }}>{client.name}</td>
-                  <td style={{ padding: '1rem' }}>{client.contact_person}</td>
-                  <td style={{ padding: '1rem' }}>{client.email}</td>
-                  <td style={{ padding: '1rem' }}>{client.phone}</td>
+                  <td style={{ padding: '1rem', fontWeight: 500 }}>{client.nama_institusi}</td>
+                  <td style={{ padding: '1rem' }}>{client.alamat}</td>
+                  <td style={{ padding: '1rem' }}>{client.kota}</td>
                 </tr>
               ))}
             </tbody>

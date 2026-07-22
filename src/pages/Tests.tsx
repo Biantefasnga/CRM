@@ -14,7 +14,7 @@ export default function Tests() {
         .select(`
           *,
           clients (
-            name
+            nama_institusi
           )
         `)
         .order('created_at', { ascending: false });
@@ -61,7 +61,7 @@ export default function Tests() {
               {tests.map(test => (
                 <tr key={test.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '1rem', fontWeight: 500 }}>{test.sample_name}</td>
-                  <td style={{ padding: '1rem' }}>{test.clients?.name}</td>
+                  <td style={{ padding: '1rem' }}>{test.clients?.nama_institusi}</td>
                   <td style={{ padding: '1rem' }}>{new Date(test.received_date).toLocaleDateString()}</td>
                   <td style={{ padding: '1rem' }}>{new Date(test.target_completion_date).toLocaleDateString()}</td>
                   <td style={{ padding: '1rem' }}>{getStatusBadge(test.status)}</td>
