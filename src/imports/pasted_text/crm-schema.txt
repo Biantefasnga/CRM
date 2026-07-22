@@ -1,0 +1,181 @@
+Build Prompt: Laboratory Testing Services CRM
+Copy everything below this line into your AI coding tool (Claude Code, Cursor, etc.)
+
+Build a full-featured CRM web application for a laboratory testing services company (water quality, medical/biological samples, materials testing, and similar accredited testing services). The company operates under multiple compliance standards (ISO 17025, EPA methods, USP monographs, GB national standards, EN norms, and others), and client relationships revolve around quotations for testing services and turnaround time (TAT) commitments rather than generic sales cycles.
+
+Tech Stack
+Frontend: React (or Next.js) + Tailwind CSS + shadcn/ui components
+Backend/DB: Supabase (Postgres + Auth + Row Level Security + Realtime + Storage)
+PDF export: client-side generation (jsPDF or similar) for quotations
+Auth: Supabase Auth, role-based (Admin / Sales-Analyst / Lab Analyst / Viewer)
+Realtime: Supabase Realtime subscriptions for activity feed and TAT status changes
+Domain Context
+
+"Nature of Testing" is a first-class attribute throughout the app, not just a tag. Every client, deal, quotation line item, and sample must be classifiable by:
+
+Test category: Water Quality / Environmental, Medical & Biological Samples, Materials & Chemical Testing, Microbiology, Other
+Governing standard/method family: ISO (e.g., ISO 17025, ISO 9001), EPA (e.g., EPA 200.7, EPA 300.1), USP (e.g., USP <232>, USP <788>), GB (Chinese national standards, e.g., GB 5750), EN (European norms, e.g., EN 1484), plus a free-text/custom method field for anything not covered
+1. Database Schema (Supabase / Postgres)
+sql
+-- Clients
+create table clients (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  industry_sector text,
+  test_categories text[], -- e.g. {'Water Quality','Materials'}
+  standards_required text[], -- e.g. {'ISO 17025','EPA 200.7'}
+  status text check (status in ('Active','Prospect','At Risk','Churned')) default 'Prospect',
+  owner_id uuid references users(id),
+  total_deal_value numeric default 0,
+  last_contact_at timestamptz,
+  created_at timestamptz default now()
+);
+
+-- Contacts
+create table contacts (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid references clients(id) on delete cascade,
+  name text not null,
+  email text,
+  phone text,
+  position text,
+  is_primary boolean default false
+);
+
+-- Pipeline deals
+create table deals (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid references clients(id),
+  title text,
+  value numeric,
+  stage text check (stage in ('Prospect','Qualified','Quotation Sent','Negotiation','Closed Won','Closed Lost')) default 'Prospect',
+  probability int check (probability between 0 and 100) default 20,
+  due_date date,
+  owner_id uuid references users(id),
+  quotation_id uuid references quotations(id),
+  created_at timestamptz default now()
+);
+
+-- Quotations
+create table quotations (
+  id uuid primary key default gen_random_uuid(),
+  quotation_number text unique not null,
+  client_id uuid references clients(id),
+  deal_id uuid references deals(id),
+  status text check (status in ('Draft','Sent','Under Review','Approved','Rejected','Expired')) default 'Draft',
+  currency text default 'IDR',
+  subtotal numeric default 0,
+  tax_rate numeric default 11, -- e.g. Indonesian VAT
+  total numeric default 0,
+  valid_until date,
+  sent_at timestamptz,
+  approved_at timestamptz,
+  created_at timestamptz default now()
+);
+
+-- Quotation line items
+create table quotation_items (
+  id uuid primary key default gen_random_uuid(),
+  quotation_id uuid references quotations(id) on delete cascade,
+  test_name text not null,
+  test_category text, -- Water Quality / Medical / Materials / Microbiology
+  standard_method text, -- e.g. 'EPA 200.7', 'USP <232>', 'ISO 17025', 'GB 5750', 'EN 1484'
+  sample_matrix text, -- e.g. Drinking Water, Serum, Polymer
+  unit_price numeric,
+  quantity int default 1,
+  standard_tat_days int, -- expected turnaround per method
+  line_total numeric generated always as (unit_price * quantity) stored
+);
+
+-- Samples received (linked to an approved quotation)
+create table samples (
+  id uuid primary key default gen_random_uuid(),
+  sample_code text unique not null,
+  client_id uuid references clients(id),
+  quotation_id uuid references quotations(id),
+  test_category text,
+  received_date date default current_date,
+  target_completion_date date,
+  actual_completion_date date,
+  status text check (status in ('Received','In Progress','On Track','At Risk','Overdue','Completed')) default 'Received',
+  assigned_analyst uuid references users(id)
+);
+
+-- TAT tracking log (per test item within a sample, since one sample can have multiple tests/methods)
+create table tat_tracking (
+  id uuid primary key default gen_random_uuid(),
+  sample_id uuid references samples(id) on delete cascade,
+  test_name text,
+  standard_method text,
+  received_at timestamptz,
+  target_completion timestamptz,
+  actual_completion timestamptz,
+  status text check (status in ('On Track','At Risk','Overdue','Completed')) default 'On Track',
+  notes text
+);
+
+-- Activity feed
+create table activities (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid references clients(id),
+  type text check (type in ('Call','Email','Meeting','Note','Quotation','TAT Update')),
+  description text,
+  created_by uuid references users(id),
+  created_at timestamptz default now()
+);
+
+-- Users/team
+create table users (
+  id uuid primary key default gen_random_uuid(),
+  name text,
+  email text unique,
+  role text check (role in ('Admin','Sales','Lab Analyst','Viewer'))
+);
+
+Enable Row Level Security on all tables. Policies: Admin sees everything; Sales sees clients/deals/quotations they own or are assigned; Lab Analysts see samples/TAT records assigned to them; all authenticated users can read the activity feed for clients they have access to.
+
+2. Pages & Features
+A. Overview (Dashboard Home)
+4 KPI stat cards:
+Active Clients (count, with trend vs. last month)
+Open Pipeline Value (sum of non-closed deal values)
+Pending Quotations (count + total value awaiting approval)
+TAT Breaches (samples currently "At Risk" or "Overdue")
+Recent clients table: Name, Test Category, Status badge, Owner, Last Activity date — sortable, links to client detail panel
+Activity feed sidebar: realtime, reverse-chronological list of calls/emails/notes/quotation events/TAT status changes across all clients, each entry showing actor, client, timestamp
+B. Clients
+Full sortable table: Client Name, Industry Sector, Test Categories (badges), Standards Required (badges), Status, Owner, Last Contact, Total Deal Value
+Status filter tabs: All / Active / Prospect / At Risk / Churned
+Search + column sort on all fields
+Click a row → slide-in detail panel containing:
+Contact info (all associated contacts, primary flagged)
+Deals list (linked pipeline cards with stage + value)
+Quotations list (linked, with status)
+Activity timeline (chronological, scoped to this client)
+Quick actions: Email and Call buttons (mailto: / tel: links, or integration hooks), plus "Log Activity"
+C. Pipeline (Kanban)
+Columns: Prospect → Qualified → Quotation Sent → Negotiation → Closed (Closed splits into Won/Lost, either as two end columns or a toggle/filter view)
+Each card shows: client name, deal value, probability progress bar, due date, owner avatar
+Drag-and-drop between stages updates deals.stage in Supabase; moving into "Quotation Sent" can optionally prompt linking/creating a quotation
+Stage totals shown in each column header (count + summed value)
+D. Quotation Generator & Tracker
+Generator:
+Select client (or create new)
+Select test category and applicable standard/method from a searchable, categorized picker (grouped by ISO / EPA / USP / GB / EN / Other)
+Add line items: test name, sample matrix, method reference, unit price, quantity, standard TAT days — auto-calculates line totals, subtotal, tax, grand total
+Set validity period
+Export as branded PDF; save as Draft or mark Sent
+Tracker (table view): Quotation #, Client, Category/Standards, Date Issued, Valid Until, Total Value, Status (Draft/Sent/Under Review/Approved/Rejected/Expired), linked pipeline stage
+Status changes cascade: e.g., "Approved" can auto-create sample records and move the linked deal toward "Negotiation"/"Closed Won"
+E. TAT Tracker
+Table/board view of all active samples and their test items: Sample Code, Client, Test Category, Standard/Method, Received Date, Target Completion, Status, Assigned Analyst
+Color-coded status (green = On Track, yellow = At Risk / approaching deadline, red = Overdue, grey = Completed) — auto-computed from received/target dates vs. current date, not manually set
+Filterable by analyst, test category, standard, and status
+Detail view per sample showing all linked test items and their individual TAT progress
+Alerts/badges for anything crossing into "At Risk" (e.g., within 20% of target window remaining)
+3. Design Notes
+Sidebar navigation: Overview / Clients / Pipeline / Quotations / TAT Tracker / (Reports, optional)
+Consistent card-based components, clean modern SaaS dashboard aesthetic
+Status badges use a consistent color system app-wide (same green/yellow/orange/red logic across Clients, Quotations, and TAT views)
+Fully responsive; slide-in panels rather than modals for detail views to preserve list context
+All monetary values stored and displayed as plain numeric types (avoid locale-dependent formatting at the DB layer)
