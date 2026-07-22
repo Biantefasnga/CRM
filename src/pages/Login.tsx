@@ -32,6 +32,10 @@ export default function Login({ session }: { session: any }) {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password) {
+      setError('Email and password are required for Sign Up.');
+      return;
+    }
     setLoading(true);
     setError(null);
     setMessage(null);
