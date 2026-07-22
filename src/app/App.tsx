@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { DataProvider, useData } from "./lib/dataContext";
 import {
   Users, BarChart2, Activity, Search, Bell, Plus, MoreHorizontal,
   Phone, Mail, Building2, X, Target, Clock, ChevronRight,
@@ -443,6 +444,7 @@ function StatCard({ label, value, sub, trend, up, alert }: { label: string; valu
 // ─── Overview ─────────────────────────────────────────────────────────────────
 
 function Overview() {
+  const { users: USERS, clients: CLIENTS, deals: DEALS, quotations: QUOTATIONS, samples: SAMPLES, activities: ACTIVITIES } = useData();
   const activeClients = CLIENTS.filter(c => c.status === "Active").length;
   const openPipeline = DEALS.filter(d => !d.stage.startsWith("Closed")).reduce((a, d) => a + d.value, 0);
   const pending = QUOTATIONS.filter(q => ["Sent", "Under Review"].includes(q.status));
@@ -534,6 +536,7 @@ function Overview() {
 type Client = typeof CLIENTS[0];
 
 function ClientsView({ search }: { search: string }) {
+  const { users: USERS, clients: CLIENTS, deals: DEALS, quotations: QUOTATIONS, samples: SAMPLES, activities: ACTIVITIES } = useData();
   const [selected, setSelected] = useState<Client | null>(null);
   const [filterStatus, setFilterStatus] = useState("All");
 
@@ -719,6 +722,7 @@ function ClientsView({ search }: { search: string }) {
 // ─── Pipeline ─────────────────────────────────────────────────────────────────
 
 function PipelineView() {
+  const { users: USERS, clients: CLIENTS, deals: DEALS, quotations: QUOTATIONS, samples: SAMPLES, activities: ACTIVITIES } = useData();
   const grouped = useMemo(() => PIPELINE_STAGES.reduce((acc, stage) => {
     acc[stage] = DEALS.filter(d => d.stage === stage);
     return acc;
@@ -782,6 +786,7 @@ function PipelineView() {
 // ─── Quotations ───────────────────────────────────────────────────────────────
 
 function QuotationsView({ search }: { search: string }) {
+  const { users: USERS, clients: CLIENTS, deals: DEALS, quotations: QUOTATIONS, samples: SAMPLES, activities: ACTIVITIES } = useData();
   const [tab, setTab] = useState<"tracker" | "generator">("tracker");
   const [selected, setSelected] = useState<typeof QUOTATIONS[0] | null>(null);
 
@@ -1000,6 +1005,7 @@ function QuotationsView({ search }: { search: string }) {
 // ─── TAT Tracker ─────────────────────────────────────────────────────────────
 
 function TATView({ search }: { search: string }) {
+  const { users: USERS, clients: CLIENTS, deals: DEALS, quotations: QUOTATIONS, samples: SAMPLES, activities: ACTIVITIES } = useData();
   const [filterAnalyst, setFilterAnalyst] = useState("all");
   const [filterCat, setFilterCat] = useState("all");
   const [selected, setSelected] = useState<typeof SAMPLES[0] | null>(null);
@@ -1153,6 +1159,7 @@ function TATView({ search }: { search: string }) {
 // ─── Activity ─────────────────────────────────────────────────────────────────
 
 function ActivityView() {
+  const { users: USERS, clients: CLIENTS, deals: DEALS, quotations: QUOTATIONS, samples: SAMPLES, activities: ACTIVITIES } = useData();
   return (
     <div className="flex-1 overflow-y-auto p-5">
       <div className="max-w-2xl mx-auto bg-card border border-border rounded-sm divide-y divide-border">
@@ -1198,6 +1205,7 @@ export default function App() {
   const [search, setSearch] = useState("");
 
   return (
+    <DataProvider>
     <div className="h-screen flex overflow-hidden bg-background" style={{ fontFamily: "Archivo, sans-serif" }}>
       <Sidebar active={active} setActive={(s) => { setActive(s); setSearch(""); }} />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -1212,5 +1220,6 @@ export default function App() {
         </main>
       </div>
     </div>
+    </DataProvider>
   );
 }
