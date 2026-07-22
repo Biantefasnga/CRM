@@ -15,7 +15,7 @@ export default function Dashboard() {
     const fetchStats = async () => {
       try {
         const [{ count: clientsCount }, { count: testsCount }, { count: pendingCount }, { count: overdueCount }] = await Promise.all([
-          supabase.from('clients').select('*', { count: 'exact', head: true }),
+          supabase.from('lab_clients').select('*', { count: 'exact', head: true }),
           supabase.from('test_orders').select('*', { count: 'exact', head: true }),
           supabase.from('test_orders').select('*', { count: 'exact', head: true }).eq('status', 'Pending'),
           supabase.from('test_orders').select('*', { count: 'exact', head: true }).eq('status', 'Overdue'),
